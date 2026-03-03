@@ -145,6 +145,18 @@ nb set tasks git_push_remote origin
 
 Or run `nb sync` manually.
 
+## nb plugin
+
+`nb tw [<notebook>:][<id>]` shows Taskwarrior info for tasks referenced in an nb note.
+
+```bash
+nb tw tasks:45        # task info for a single task note
+nb tw home:3          # task info for every uuid8 found in a journal page
+```
+
+The plugin is installed automatically by `tw2nb.install` if `nb` is present.
+Manual install: `nb plugin install /path/to/tw2nb/plugins/tw.nb-plugin`
+
 ## Files
 
 | File | Installed to |
@@ -153,3 +165,4 @@ Or run `nb sync` manually.
 | `tw2nb_lib.py` | `~/.task/scripts/` |
 | `tw2nb-retro` | `~/.task/scripts/` |
 | `tw2nb.rc` | `~/.task/config/` |
+| `plugins/tw.nb-plugin` | `~/.nb/.plugins/` |

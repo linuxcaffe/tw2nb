@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+###############################################################################
+# taskwarrior.nb-plugin
+#
+# Show Taskwarrior task info for tasks referenced in nb notes.
+#
+# Works with both per-task notes (tasks: notebook) and journal pages:
+#   - task note:    one uuid8 → runs `task <uuid> info`
+#   - journal page: multiple uuid8s → runs `task info` for each
+#
+# Install with:
+#   nb plugin install /path/to/taskwarrior.nb-plugin
+#
+# A plugin for `nb`.
+#   https://github.com/xwmx/nb
+###############################################################################
+
+_subcommands add "info"
+
+_subcommands describe "info" <<HEREDOC
+$(_color_primary "Usage"):
+  ${_ME} info [<notebook>:][<id>]
+
+$(_color_primary "Description"):
+  Show Taskwarrior task info for uuid(s) found in an nb note.
+
+  For a per-task note (e.g. tasks:45): finds the uuid8 and runs
+  'task UUID info'. For a journal page (e.g. home:3): runs task
+  info for every uuid8 found in the note, separated by dividers.
+
+  UUIDs are matched as 8-character lowercase hex strings in backticks,
+  which is the format tw2nb uses when archiving tasks.
+
+$(_color_primary "Examples"):
+  ${_ME} info tasks:45
+  ${_ME} info home:3
+HEREDOC
+
+_info() {
+  local _selector="${1:-}"
+
+  if [[ -z "${_selector}" ]]; then
+    _help "info"
+    return 1
+  fi
+
+  # Resolve to a file path
+  local _note_path=
+  _note_path="$(_show "${_selector}" --path 2>/dev/null)"
+
+  if [[ ! -f "${_note_path:-}" ]]; then
+    _exit_1 printf "Not found: %s\\n" "${_selector}"
+  fi
+
+  # Extract all uuid8s (8-char lowercase hex in backticks), deduplicated
+  local _uuids=()
+  mapfile -t _uuids < <(
+    grep -oP '`[0-9a-f]{8}`' "${_note_path}" \
+      | tr -d '`'                             \
+      | sort -u
+  )
+
+  if [[ ${#_uuids[@]} -eq 0 ]]; then
+    _exit_1 printf "No Taskwarrior UUIDs found in: %s\\n" "${_selector}"
+  fi
+
+  local _count="${#_uuids[@]}"
+  local _divider=
+  _divider="$(_color_muted "$(printf '%.0s─' {1..48})")"
+
+  local _i=0
+  for _uuid in "${_uuids[@]}"; do
+    _i=$((_i + 1))
+
+    [[ "${_count}" -gt 1 ]] && printf "%s\\n" "${_divider}"
+
+    if ! task rc.hooks=off rc.confirmation=off "${_uuid}" info 2>/dev/null; then
+      printf "%s %s\\n"                      \
+        "$(_color_muted "not found:")"       \
+        "$(_color_primary "${_uuid}")"
+    fi
+  done
+
+  [[ "${_count}" -gt 1 ]] && printf "%s\\n" "${_divider}"
+}
+

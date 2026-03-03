@@ -1,0 +1,167 @@
+#!/usr/bin/env python3
+"""
+tw2nb-retro - Retrospective archival of completed/deleted tasks to nb
+Version: 0.1.0
+
+Walks Taskwarrior's completed task history and archives any tasks not yet
+in nb. Safe to re-run — skips tasks whose uuid8 already appears in the
+target notebook.
+
+Usage:
+  tw2nb-retro [options]
+
+Options:
+  --status completed|deleted|all   Which tasks to process (default: completed)
+  --from   YYYY-MM-DD              Only tasks completed/deleted on or after date
+  --dry-run                        Show what would be archived, do nothing
+  --notebook NAME                  Override tw2nb.notebook from config
+  --journal NAME                   Override tw2nb.journal from config
+  -v, --verbose                    Show each task as it's processed
+"""
+
+import argparse
+import json
+import subprocess
+import sys
+from datetime import datetime
+from pathlib import Path
+
+# ============================================================================
+# Locate tw2nb_lib
+# ============================================================================
+
+_lib_dirs = [
+    Path(__file__).parent,
+    Path.home() / '.task' / 'scripts',
+]
+for _d in _lib_dirs:
+    if (_d / 'tw2nb_lib.py').exists():
+        sys.path.insert(0, str(_d))
+        break
+
+from tw2nb_lib import archive, find_task_note, load_config  # noqa: E402
+
+CONFIG_FILE = Path.home() / '.task' / 'config' / 'tw2nb.rc'
+TASK        = 'task'
+
+
+# ============================================================================
+# Task export
+# ============================================================================
+
+def export_tasks(statuses: list, from_date: str = None) -> list:
+    """Export tasks with given status(es) from Taskwarrior."""
+    tasks = []
+    for status in statuses:
+        filters = [f'status:{status}', 'rc.context=none']
+        if from_date:
+            # Filter by end date for completed, entry date otherwise
+            date_field = 'end' if status == 'completed' else 'entry'
+            filters.append(f'{date_field}.after:{from_date}')
+        result = subprocess.run(
+            [TASK, 'rc.hooks=off', 'rc.confirmation=off', 'rc.verbose=nothing']
+            + filters + ['export'],
+            capture_output=True, text=True,
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            try:
+                tasks.extend(json.loads(result.stdout))
+            except json.JSONDecodeError:
+                print(f'[tw2nb-retro] WARNING: could not parse export for status:{status}',
+                      file=sys.stderr)
+    return tasks
+
+
+# ============================================================================
+# Main
+# ============================================================================
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description='Retrospective archival of Taskwarrior tasks to nb',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument('--status', default='completed',
+                        choices=['completed', 'deleted', 'all'],
+                        help='Which tasks to process (default: completed)')
+    parser.add_argument('--from', dest='from_date', metavar='YYYY-MM-DD',
+                        help='Only tasks completed/deleted on or after this date')
+    parser.add_argument('--dry-run', action='store_true',
+                        help='Show what would be archived without doing it')
+    parser.add_argument('--notebook', metavar='NAME',
+                        help='Override tw2nb.notebook from config')
+    parser.add_argument('--journal', metavar='NAME',
+                        help='Override tw2nb.journal from config')
+    parser.add_argument('-v', '--verbose', action='store_true',
+                        help='Show each task as processed')
+    args = parser.parse_args()
+
+    cfg = load_config(CONFIG_FILE)
+    if args.notebook:
+        cfg['notebook'] = args.notebook
+    if args.journal:
+        cfg['journal'] = args.journal
+
+    statuses = ['completed', 'deleted'] if args.status == 'all' else [args.status]
+
+    print(f'[tw2nb-retro] Exporting {args.status} tasks...')
+    tasks = export_tasks(statuses, args.from_date)
+
+    if not tasks:
+        print('[tw2nb-retro] No tasks found.')
+        return 0
+
+    print(f'[tw2nb-retro] Found {len(tasks)} task(s). Checking nb for existing notes...')
+
+    archived = skipped = errors = 0
+
+    for task in tasks:
+        uuid  = task.get('uuid', '')
+        uuid8 = uuid[:8]
+        desc  = task.get('description', 'Untitled')
+        status = task.get('status', 'completed')
+
+        # Determine event type
+        event = 'completed' if status == 'completed' else 'deleted'
+
+        # Determine the date to label the archive entry
+        # Use end date for completed, today for deleted (TW may not store end for deleted)
+        end_raw = task.get('end', '')
+        if end_raw:
+            try:
+                today = datetime.strptime(end_raw[:8], '%Y%m%d').strftime('%Y-%m-%d')
+            except (ValueError, TypeError):
+                today = datetime.now().strftime('%Y-%m-%d')
+        else:
+            today = datetime.now().strftime('%Y-%m-%d')
+
+        # Check if already archived
+        existing = find_task_note(cfg['notebook'], uuid8)
+        if existing:
+            if args.verbose:
+                print(f'  SKIP  {uuid8}  {desc[:50]}')
+            skipped += 1
+            continue
+
+        if args.dry_run:
+            print(f'  DRY   {uuid8}  [{event}]  {desc[:50]}')
+            archived += 1
+            continue
+
+        if args.verbose:
+            print(f'  ARCH  {uuid8}  [{event}]  {desc[:50]}')
+
+        try:
+            archive(task, event, cfg, today=today)
+            archived += 1
+        except Exception as e:
+            print(f'  ERROR {uuid8}  {e}', file=sys.stderr)
+            errors += 1
+
+    verb = 'Would archive' if args.dry_run else 'Archived'
+    print(f'\n[tw2nb-retro] Done. {verb}: {archived}  Skipped: {skipped}  Errors: {errors}')
+    return 0 if errors == 0 else 1
+
+
+if __name__ == '__main__':
+    sys.exit(main())

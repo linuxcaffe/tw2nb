@@ -1,0 +1,28 @@
+# tw2nb.rc - Configuration for tw2nb hook
+# Copy to ~/.task/config/tw2nb.rc and edit to taste.
+#
+# Include in .taskrc with:
+#   include ~/.task/config/tw2nb.rc
+
+# nb notebook for per-task todo notes (one note per UUID)
+tw2nb.notebook   = tasks
+
+# nb notebook for the running journal (dated entries, one per day)
+# Use your main nb notebook here so task events appear alongside other content.
+tw2nb.journal    = home
+
+# Archive deleted tasks as well as completed ones (yes/no)
+tw2nb.on_delete  = no
+
+# Add a journal entry when an annotation is added to an active task (yes/no)
+# When no (default), annotations only update the per-task note in tw2nb.notebook.
+tw2nb.journal_annotated = no
+
+# Run 'nb sync' after each archive operation (yes/no)
+# Useful if your nb notebooks have a remote configured.
+tw2nb.sync       = no
+
+# Create a separate nb notebook per Taskwarrior project (yes/no)
+# When yes, tasks in project 'work.web' go to notebook 'work-web'.
+# When no (default), all tasks go to tw2nb.notebook with #project/... tags.
+tw2nb.project_notebooks = no

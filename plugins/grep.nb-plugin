@@ -173,7 +173,7 @@ _nb_grep() {
         else
           printf "%s %s\n" \
             "$(_color_muted "$(printf '%4s ·' "${_lnum}")")" \
-            "$(_color_muted "${_text}")"
+            "${_text}"
         fi
       else
         printf "%s\n" "${_line}"

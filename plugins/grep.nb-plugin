@@ -1,0 +1,189 @@
+#!/usr/bin/env bash
+###############################################################################
+# grep.nb-plugin
+#
+# Context-aware search across nb notes. Addresses the limitation of
+# `nb search` showing only one matched line per result.
+# https://github.com/xwmx/nb/issues/437
+#
+# Install with:
+#   nb plugin install /path/to/grep.nb-plugin
+#
+# A plugin for `nb`.
+#   https://github.com/xwmx/nb
+###############################################################################
+
+_subcommands add "nb_grep"
+
+_subcommands describe "nb_grep" <<'HEREDOC'
+Usage:
+  nb nb_grep [-C <n>] [-A <n>] [-B <n>] [-i] [-l] [<notebook>:] <pattern>
+
+Alias:
+  nb g
+
+Options:
+  -C, --context <n>   Lines of context around each match (default: 2)
+  -A, --after   <n>   Lines after each match
+  -B, --before  <n>   Lines before each match
+  -i, --ignore-case   Case-insensitive search
+  -l, --list          List matching note titles only (no context body)
+
+Description:
+  Search nb notes with context lines, like grep -C. Results are grouped
+  by note with nb-style headers, distinguishing matched lines (│) from
+  surrounding context lines (·).
+
+  The default context depth can be set with the NB_GREP_CONTEXT
+  environment variable.
+
+  Uses ripgrep (rg) if available for file discovery, grep for context output.
+
+Examples:
+  nb g "login bug"
+  nb g -C 4 "auth middleware"
+  nb g -i "taskwarrior" tasks:
+  nb g -l "abc12345"
+  NB_GREP_CONTEXT=5 nb g "pattern"
+HEREDOC
+
+
+_nb_grep() {
+  # --- defaults ---
+  local _context="${NB_GREP_CONTEXT:-2}"
+  local _after=""
+  local _before=""
+  local _ignore_case=0
+  local _list_only=0
+  local _notebook_filter=""
+  local _pattern=""
+
+  # --- parse args ---
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -C|--context)     shift; _context="$1"        ;;
+      -A|--after)       shift; _after="$1"           ;;
+      -B|--before)      shift; _before="$1"          ;;
+      -i|--ignore-case) _ignore_case=1               ;;
+      -l|--list)        _list_only=1                 ;;
+      -*)               :                            ;;  # ignore unknown flags
+      *:)               _notebook_filter="${1%:}"    ;;  # notebook: selector
+      *)                _pattern="$1"               ;;
+    esac
+    shift
+  done
+
+  if [[ -z "${_pattern}" ]]; then
+    _help "nb_grep"
+    return 1
+  fi
+
+  # --- search root ---
+  local _nb_dir="${NB_DIR:-${HOME}/.nb}"
+  local _search_root="${_nb_dir}"
+
+  if [[ -n "${_notebook_filter}" ]]; then
+    _search_root="${_nb_dir}/${_notebook_filter}"
+    if [[ ! -d "${_search_root}" ]]; then
+      _exit_1 printf "Notebook not found: %s\n" "${_notebook_filter}"
+    fi
+  fi
+
+  # --- build args ---
+  local _case_arg_rg=()
+  local _case_arg_grep=()
+  [[ $_ignore_case -eq 1 ]] && _case_arg_rg=("--ignore-case")
+  [[ $_ignore_case -eq 1 ]] && _case_arg_grep=("-i")
+
+  # Context flags for grep pass 2
+  local _ctx_args=()
+  if [[ -n "${_after}" || -n "${_before}" ]]; then
+    [[ -n "${_after}" ]]  && _ctx_args+=("-A" "${_after}")
+    [[ -n "${_before}" ]] && _ctx_args+=("-B" "${_before}")
+  else
+    _ctx_args+=("-C" "${_context}")
+  fi
+
+  # --- pass 1: find matching files (temp file, no process substitution) ---
+  local _tmp_list
+  _tmp_list="$(mktemp)"
+
+  if command -v rg &>/dev/null; then
+    rg --files-with-matches --glob "*.md" --color=never \
+      "${_case_arg_rg[@]}" "${_pattern}" "${_search_root}" \
+      2>/dev/null | sort > "${_tmp_list}"
+  else
+    /usr/bin/grep -rl --include="*.md" \
+      "${_case_arg_grep[@]}" "${_pattern}" "${_search_root}" \
+      2>/dev/null | sort > "${_tmp_list}"
+  fi
+
+  local _matching_files=()
+  mapfile -t _matching_files < "${_tmp_list}"
+  rm -f "${_tmp_list}"
+
+  if [[ ${#_matching_files[@]} -eq 0 ]]; then
+    printf "No results for: %s\n" "$(_color_primary "${_pattern}")"
+    return 0
+  fi
+
+  # --- list mode: note headers only ---
+  if [[ $_list_only -eq 1 ]]; then
+    local _f _rp _sel
+    for _f in "${_matching_files[@]}"; do
+      _rp="${_f#${_nb_dir}/}"; _sel="${_rp%%/*}:${_rp#*/}"
+      _show "${_sel}" --info-line 2>/dev/null || printf "%s\n" "${_f}"
+    done
+    return 0
+  fi
+
+  # --- full mode: context output grouped by note ---
+  local _divider
+  _divider="$(_color_muted "$(printf '%.0s─' {1..48})")"
+  local _first=1
+  local _tmp_ctx
+  _tmp_ctx="$(mktemp)"
+
+  local _f _rp _sel
+  for _f in "${_matching_files[@]}"; do
+    [[ $_first -eq 0 ]] && printf "\n"
+    _first=0
+
+    _rp="${_f#${_nb_dir}/}"; _sel="${_rp%%/*}:${_rp#*/}"
+    local _info_line
+    _info_line="$(_show "${_sel}" --info-line 2>/dev/null || basename "${_f}")"
+    printf "%s\n%s\n" "${_info_line}" "${_divider}"
+
+    # pass 2: grep with line numbers + context into temp file
+    /usr/bin/grep -n --color=never \
+      "${_ctx_args[@]}" "${_case_arg_grep[@]}" \
+      "${_pattern}" "${_f}" > "${_tmp_ctx}" 2>/dev/null
+
+    while IFS= read -r _line; do
+      if [[ "${_line}" == "--" ]]; then
+        printf "  %s\n" "$(_color_muted "···")"
+      elif [[ "${_line}" =~ ^([0-9]+)([-:])(.*)$ ]]; then
+        local _lnum="${BASH_REMATCH[1]}"
+        local _sep="${BASH_REMATCH[2]}"
+        local _text="${BASH_REMATCH[3]}"
+        if [[ "${_sep}" == ":" ]]; then
+          printf "%s %s\n" \
+            "$(_color_muted "$(printf '%4s │' "${_lnum}")")" \
+            "${_text}"
+        else
+          printf "%s %s\n" \
+            "$(_color_muted "$(printf '%4s ·' "${_lnum}")")" \
+            "$(_color_muted "${_text}")"
+        fi
+      else
+        printf "%s\n" "${_line}"
+      fi
+    done < "${_tmp_ctx}"
+  done
+
+  rm -f "${_tmp_ctx}"
+}
+
+_subcommands add "g"
+_g() { _nb_grep "$@"; }
+_alias_subcommand "nb_grep" "g"

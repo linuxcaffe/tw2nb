@@ -74,6 +74,8 @@ install() {
         mkdir -p "$NB_PLUGINS_DIR"
         cp "${SCRIPT_DIR}/plugins/tw.nb-plugin" "${NB_PLUGINS_DIR}/tw.nb-plugin"
         tw_msg "Installed: ${NB_PLUGINS_DIR}/tw.nb-plugin"
+        cp "${SCRIPT_DIR}/plugins/grep.nb-plugin" "${NB_PLUGINS_DIR}/grep.nb-plugin"
+        tw_msg "Installed: ${NB_PLUGINS_DIR}/grep.nb-plugin"
     else
         tw_msg "NOTE: nb not found — skipping plugin install (install nb, then: nb plugin install ${SCRIPT_DIR}/plugins/tw.nb-plugin)"
     fi
@@ -107,6 +109,7 @@ install() {
     echo "${APPNAME}|${VERSION}|${SCRIPTS_DIR}/tw2nb-retro||${TIMESTAMP}"       >> "$MANIFEST_FILE"
     echo "${APPNAME}|${VERSION}|${CONFIG_DIR}/tw2nb.rc||${TIMESTAMP}"           >> "$MANIFEST_FILE"
     echo "${APPNAME}|${VERSION}|${NB_PLUGINS_DIR}/tw.nb-plugin||${TIMESTAMP}"   >> "$MANIFEST_FILE"
+    echo "${APPNAME}|${VERSION}|${NB_PLUGINS_DIR}/grep.nb-plugin||${TIMESTAMP}" >> "$MANIFEST_FILE"
 
     tw_success "Installed ${APPNAME} v${VERSION}"
     echo ""

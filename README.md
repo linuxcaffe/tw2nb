@@ -145,17 +145,37 @@ nb set tasks git_push_remote origin
 
 Or run `nb sync` manually.
 
-## nb plugin
+## nb plugins
 
-`nb tw [<notebook>:][<id>]` shows Taskwarrior info for tasks referenced in an nb note.
+### `nb info` — Taskwarrior task info
+
+`nb info [<notebook>:][<id>]` shows Taskwarrior info for tasks referenced in an nb note.
 
 ```bash
-nb tw tasks:45        # task info for a single task note
-nb tw home:3          # task info for every uuid8 found in a journal page
+nb info tasks:45      # task info for a single task note
+nb info home:3        # task info for every uuid8 found in a journal page
 ```
 
-The plugin is installed automatically by `tw2nb.install` if `nb` is present.
-Manual install: `nb plugin install /path/to/tw2nb/plugins/tw.nb-plugin`
+### `nb nb_grep` / `nb g` — context search
+
+`nb g <pattern>` searches notes with context lines (like `grep -C`), grouped by note.
+Addresses the one-line-per-result limitation of `nb search`.
+
+```bash
+nb g "#bug"                 # search all notebooks
+nb g "#bug" tasks:          # search tasks notebook only
+nb g -C 4 "auth middleware" # 4 lines of context
+nb g -i "taskwarrior"       # case-insensitive
+nb g -l "abc12345"          # list matching notes only
+NB_GREP_CONTEXT=5 nb g "pattern"
+```
+
+Both plugins are installed automatically by `tw2nb.install` if `nb` is present.
+Manual install:
+```bash
+nb plugin install /path/to/tw2nb/plugins/tw.nb-plugin
+nb plugin install /path/to/tw2nb/plugins/grep.nb-plugin
+```
 
 ## Files
 
@@ -166,3 +186,4 @@ Manual install: `nb plugin install /path/to/tw2nb/plugins/tw.nb-plugin`
 | `tw2nb-retro` | `~/.task/scripts/` |
 | `tw2nb.rc` | `~/.task/config/` |
 | `plugins/tw.nb-plugin` | `~/.nb/.plugins/` |
+| `plugins/grep.nb-plugin` | `~/.nb/.plugins/` |

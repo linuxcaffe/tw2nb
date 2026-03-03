@@ -50,7 +50,7 @@ HEREDOC
 
 _nb_grep() {
   # --- defaults ---
-  local _context="${NB_GREP_CONTEXT:-2}"
+  local _context="${NB_GREP_CONTEXT:-1}"
   local _after=""
   local _before=""
   local _ignore_case=0
@@ -90,9 +90,7 @@ _nb_grep() {
   fi
 
   # --- build args ---
-  local _case_arg_rg=()
   local _case_arg_grep=()
-  [[ $_ignore_case -eq 1 ]] && _case_arg_rg=("--ignore-case")
   [[ $_ignore_case -eq 1 ]] && _case_arg_grep=("-i")
 
   # Context flags for grep pass 2
@@ -154,29 +152,16 @@ _nb_grep() {
     _info_line="$(_show "${_sel}" --info-line 2>/dev/null || basename "${_f}")"
     printf "%s\n%s\n" "${_info_line}" "${_divider}"
 
-    # pass 2: grep with line numbers + context into temp file
-    /usr/bin/grep -n --color=never \
+    # pass 2: grep with colour (match term highlighted) into temp file
+    /usr/bin/grep -n --color=always \
       "${_ctx_args[@]}" "${_case_arg_grep[@]}" \
       "${_pattern}" "${_f}" > "${_tmp_ctx}" 2>/dev/null
 
     while IFS= read -r _line; do
       if [[ "${_line}" == "--" ]]; then
         printf "  %s\n" "$(_color_muted "···")"
-      elif [[ "${_line}" =~ ^([0-9]+)([-:])(.*)$ ]]; then
-        local _lnum="${BASH_REMATCH[1]}"
-        local _sep="${BASH_REMATCH[2]}"
-        local _text="${BASH_REMATCH[3]}"
-        if [[ "${_sep}" == ":" ]]; then
-          printf "%s %s\n" \
-            "$(_color_muted "$(printf '%4s │' "${_lnum}")")" \
-            "${_text}"
-        else
-          printf "%s %s\n" \
-            "$(_color_muted "$(printf '%4s ·' "${_lnum}")")" \
-            "${_text}"
-        fi
       else
-        printf "%s\n" "${_line}"
+        printf "  %s\n" "${_line}"
       fi
     done < "${_tmp_ctx}"
   done

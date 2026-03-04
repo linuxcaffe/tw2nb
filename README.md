@@ -159,7 +159,7 @@ nb info home:3        # task info for every uuid8 found in a journal page
 ### `nb nb_grep` / `nb g` — context search
 
 `nb g <pattern>` searches notes with context lines (like `grep -C`), grouped by note.
-Addresses the one-line-per-result limitation of `nb search`.
+Addresses the one-line-per-result limitation of `nb search` ([nb issue #437](https://github.com/xwmx/nb/issues/437)).
 
 ```bash
 nb g "#bug"                 # search all notebooks
@@ -167,11 +167,16 @@ nb g "#bug" tasks:          # search tasks notebook only
 nb g -C 4 "auth middleware" # 4 lines of context
 nb g -i "taskwarrior"       # case-insensitive
 nb g -l "abc12345"          # list matching notes only
-NB_GREP_CONTEXT=5 nb g "pattern"
 ```
 
-Both plugins are installed automatically by `tw2nb.install` if `nb` is present.
-Manual install:
+`grep.nb-plugin` is also available standalone (no Taskwarrior required) at **[nb-plugins](https://github.com/linuxcaffe/nb-plugins)**:
+
+```bash
+nb plugin install https://raw.githubusercontent.com/linuxcaffe/nb-plugins/main/grep.nb-plugin
+```
+
+`tw2nb.install` installs both plugins automatically if `nb` is present.
+Manual install from this repo:
 ```bash
 nb plugin install /path/to/tw2nb/plugins/tw.nb-plugin
 nb plugin install /path/to/tw2nb/plugins/grep.nb-plugin

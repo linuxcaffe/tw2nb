@@ -165,7 +165,7 @@ Addresses the one-line-per-result limitation of `nb search` ([nb issue #437](htt
 nb g "#bug"                 # search all notebooks
 nb g "#bug" tasks:          # search tasks notebook only
 nb g -C 4 "auth middleware" # 4 lines of context
-nb g -i "taskwarrior"       # case-insensitive
+nb g -I "taskwarrior"       # case-insensitive
 nb g -l "abc12345"          # list matching notes only
 ```
 

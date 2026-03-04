@@ -17,7 +17,7 @@ _subcommands add "nb_grep"
 
 _subcommands describe "nb_grep" <<'HEREDOC'
 Usage:
-  nb nb_grep [-C <n>] [-A <n>] [-B <n>] [-i] [-l] [<notebook>:] <pattern>
+  nb nb_grep [-C <n>] [-A <n>] [-B <n>] [-I] [-l] [<notebook>:] <pattern>
 
 Alias:
   nb g
@@ -26,7 +26,7 @@ Options:
   -C, --context <n>   Lines of context around each match (default: 2)
   -A, --after   <n>   Lines after each match
   -B, --before  <n>   Lines before each match
-  -i, --ignore-case   Case-insensitive search
+  -I, --ignore-case   Case-insensitive search
   -l, --list          List matching note titles only (no context body)
 
 Description:
@@ -42,7 +42,7 @@ Description:
 Examples:
   nb g "login bug"
   nb g -C 4 "auth middleware"
-  nb g -i "taskwarrior" tasks:
+  nb g -I "taskwarrior" tasks:
   nb g -l "abc12345"
   NB_GREP_CONTEXT=5 nb g "pattern"
 HEREDOC
@@ -64,7 +64,7 @@ _nb_grep() {
       -C|--context)     shift; _context="$1"        ;;
       -A|--after)       shift; _after="$1"           ;;
       -B|--before)      shift; _before="$1"          ;;
-      -i|--ignore-case) _ignore_case=1               ;;
+      -I|--ignore-case) _ignore_case=1               ;;
       -l|--list)        _list_only=1                 ;;
       -*)               :                            ;;  # ignore unknown flags
       *:)               _notebook_filter="${1%:}"    ;;  # notebook: selector

@@ -9,6 +9,7 @@ On three triggering events:
 | Event | Trigger | Action |
 |-------|---------|--------|
 | `completed` | `task done` | Create/close nb todo · journal entry · annotate task with nb ref |
+| `logged` | `task log` | Same as completed — archived immediately on add |
 | `deleted` | `task delete` | Archive to nb · journal entry (if `on_delete=yes`) |
 | `annotated` | new annotation on active task | Append to task note (journal entry if `journal_annotated=yes`) |
 
@@ -186,6 +187,7 @@ nb plugin install /path/to/tw2nb/plugins/grep.nb-plugin
 
 | File | Installed to |
 |------|-------------|
+| `on-add_tw2nb.py` | `~/.task/hooks/` |
 | `on-modify_tw2nb.py` | `~/.task/hooks/` |
 | `tw2nb_lib.py` | `~/.task/scripts/` |
 | `tw2nb-retro` | `~/.task/scripts/` |

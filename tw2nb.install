@@ -43,10 +43,14 @@ install() {
 
     mkdir -p "$HOOKS_DIR" "$SCRIPTS_DIR" "$CONFIG_DIR"
 
-    # Hook
+    # Hooks
     cp "${SCRIPT_DIR}/on-modify_tw2nb.py" "${HOOKS_DIR}/on-modify_tw2nb.py"
     chmod +x "${HOOKS_DIR}/on-modify_tw2nb.py"
     tw_msg "Installed: ${HOOKS_DIR}/on-modify_tw2nb.py"
+
+    cp "${SCRIPT_DIR}/on-add_tw2nb.py" "${HOOKS_DIR}/on-add_tw2nb.py"
+    chmod +x "${HOOKS_DIR}/on-add_tw2nb.py"
+    tw_msg "Installed: ${HOOKS_DIR}/on-add_tw2nb.py"
 
     # Shared library
     cp "${SCRIPT_DIR}/tw2nb_lib.py" "${SCRIPTS_DIR}/tw2nb_lib.py"
@@ -105,6 +109,7 @@ install() {
         mv "${MANIFEST_FILE}.tmp" "$MANIFEST_FILE"
     fi
     echo "${APPNAME}|${VERSION}|${HOOKS_DIR}/on-modify_tw2nb.py||${TIMESTAMP}"    >> "$MANIFEST_FILE"
+    echo "${APPNAME}|${VERSION}|${HOOKS_DIR}/on-add_tw2nb.py||${TIMESTAMP}"      >> "$MANIFEST_FILE"
     echo "${APPNAME}|${VERSION}|${SCRIPTS_DIR}/tw2nb_lib.py||${TIMESTAMP}"      >> "$MANIFEST_FILE"
     echo "${APPNAME}|${VERSION}|${SCRIPTS_DIR}/tw2nb-retro||${TIMESTAMP}"       >> "$MANIFEST_FILE"
     echo "${APPNAME}|${VERSION}|${CONFIG_DIR}/tw2nb.rc||${TIMESTAMP}"           >> "$MANIFEST_FILE"

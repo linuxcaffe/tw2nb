@@ -144,7 +144,24 @@ def close_task_todo(notebook: str, note_id: str):
 
 
 def find_journal_note(journal: str, date: str) -> Optional[str]:
-    """Find today's journal note by date string. Returns note ID or None."""
+    """Find today's journal note. Returns note ID or None.
+
+    Looks for YYYYMMDD.md first (daily.nb-plugin format), then falls back
+    to searching by date string to catch notes created by older tw2nb versions.
+    date is expected in YYYY-MM-DD format.
+    """
+    # Primary: look for YYYYMMDD.md (daily plugin naming convention)
+    compact = date.replace('-', '')
+    filename = f'{compact}.md'
+    result = run_nb(f'{journal}:', 'search', filename, '--no-color', '--list')
+    if result.returncode == 0 and result.stdout.strip():
+        for line in result.stdout.strip().split('\n'):
+            if compact in line:
+                note_id = _parse_note_id(line)
+                if note_id:
+                    return note_id
+
+    # Fallback: search by ISO date string (catches 2026-03-05.md legacy notes)
     result = run_nb(f'{journal}:', 'search', date, '--no-color', '--list')
     if result.returncode == 0 and result.stdout.strip():
         for line in result.stdout.strip().split('\n'):
@@ -156,12 +173,20 @@ def find_journal_note(journal: str, date: str) -> Optional[str]:
 
 
 def append_to_journal(journal: str, date: str, entry: str):
-    """Append entry to today's journal note, creating it if needed."""
+    """Append entry to today's journal note, creating it if needed.
+
+    Creates in YYYYMMDD.md format with 'Daily YYYY-MM-DD' title,
+    matching daily.nb-plugin so both write to the same file.
+    """
     note_id = find_journal_note(journal, date)
     if note_id:
         append_to_note(journal, note_id, entry)
     else:
-        run_nb(f'{journal}:', 'add', '--title', date, '--tags', '#taskwarrior', '--content', entry)
+        compact = date.replace('-', '')
+        run_nb(f'{journal}:', 'add',
+               '--title', f'Daily {date}',
+               '--filename', f'{compact}.md',
+               '--content', entry)
 
 
 # ============================================================================

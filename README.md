@@ -91,7 +91,14 @@ tw2nb.on_delete         = no      # archive deleted tasks too (yes/no)
 tw2nb.journal_annotated = no      # also journal annotation events (yes/no)
 tw2nb.sync              = no      # run 'nb sync' after each archive (yes/no)
 tw2nb.project_notebooks = no      # one notebook per TW project (yes/no)
+tw2nb.delete_tasknote   = no      # delete annn tasknote after transfer (yes/no)
 ```
+
+### delete_tasknote
+
+When `yes`: after a task completes or is deleted, if an [annn](https://github.com/linuxcaffe/tw-ann-hook) `note:` label exists, the contents of `~/.task/notes/<slug>-<uuid8>.note.md` are appended to the nb task note under `## Task Note`, then the file is deleted.
+
+When `no` (default): contents are transferred but the tasknote file is left in place.
 
 ### journal_annotated
 

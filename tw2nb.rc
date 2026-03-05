@@ -26,3 +26,8 @@ tw2nb.sync       = no
 # When yes, tasks in project 'work.web' go to notebook 'work-web'.
 # When no (default), all tasks go to tw2nb.notebook with #project/... tags.
 tw2nb.project_notebooks = no
+
+# Delete annn tasknote file after transferring its contents to nb (yes/no)
+# When yes, ~/.task/notes/<slug>-<uuid8>.note.md is removed on task completion
+# or deletion, after its contents are appended to the nb task note.
+tw2nb.delete_tasknote = no

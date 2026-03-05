@@ -48,6 +48,7 @@ def load_config(config_file) -> dict:
         'journal_annotated':  get('tw2nb.journal_annotated',  'no') == 'yes',
         'sync':               get('tw2nb.sync',               'no') == 'yes',
         'project_notebooks':  get('tw2nb.project_notebooks',  'no') == 'yes',
+        'delete_tasknote':    get('tw2nb.delete_tasknote',    'no') == 'yes',
     }
 
 
@@ -308,6 +309,57 @@ def format_journal_entry(task: dict, event: str, today: str, note_ref: Optional[
 
 
 # ============================================================================
+# Tasknote (annn note: label) transfer
+# ============================================================================
+
+NOTES_DIR = Path.home() / '.task' / 'notes'
+
+
+def find_tasknote_file(task: dict) -> Optional[Path]:
+    """Return path to annn tasknote for this task, or None.
+
+    Looks for a 'note: ...' annotation, then globs NOTES_DIR for
+    *-<uuid8>.note.md — the naming convention annn uses.
+    """
+    anns = task.get('annotations', [])
+    has_note_label = any(
+        a.get('description', '').startswith('note:') for a in anns
+    )
+    if not has_note_label:
+        return None
+
+    uuid8 = task.get('uuid', '')[:8]
+    if not uuid8:
+        return None
+
+    matches = list(NOTES_DIR.glob(f'*-{uuid8}.note.md'))
+    return matches[0] if len(matches) == 1 else None
+
+
+def transfer_tasknote(note_file: Path, notebook: str, note_id: str, delete: bool):
+    """Append tasknote contents to the nb task note, optionally delete the file."""
+    try:
+        content = note_file.read_text().strip()
+    except OSError as e:
+        print(f'[tw2nb] WARNING: could not read tasknote {note_file}: {e}', file=sys.stderr)
+        return
+
+    if not content:
+        if delete:
+            note_file.unlink(missing_ok=True)
+        return
+
+    section = f'## Task Note\n\n{content}'
+    append_to_note(notebook, note_id, section)
+
+    if delete:
+        try:
+            note_file.unlink()
+        except OSError as e:
+            print(f'[tw2nb] WARNING: could not delete tasknote {note_file}: {e}', file=sys.stderr)
+
+
+# ============================================================================
 # Top-level archive operation (used by hook and retro)
 # ============================================================================
 
@@ -340,6 +392,12 @@ def archive(task: dict, event: str, cfg: dict, today: str = None) -> Optional[st
 
     if event == 'completed' and note_id:
         close_task_todo(notebook, note_id)
+
+    # Transfer annn tasknote contents into the nb note (completed or deleted)
+    if event in ('completed', 'deleted') and note_id:
+        note_file = find_tasknote_file(task)
+        if note_file:
+            transfer_tasknote(note_file, notebook, note_id, cfg.get('delete_tasknote', False))
 
     note_ref = f'{notebook}:{note_id}' if note_id else None
 

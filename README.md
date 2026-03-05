@@ -15,7 +15,7 @@ On three triggering events:
 
 **Per-task note** (`tasks:` notebook) — one nb todo per task, updated on each event. Full annotation history. Closed automatically on completion.
 
-**Running journal** (`home:` notebook) — dated entries (`2026-03-02.md`) with completed/deleted tasks alongside any other nb content. Grouped by day.
+**Running journal** (`home:` notebook) — dated entries (`20260302.md`) with completed/deleted tasks alongside any other nb content. Grouped by day. Compatible with [daily.nb-plugin](https://github.com/xwmx/nb/blob/master/plugins/daily.nb-plugin) — both write to the same file.
 
 ## Note format
 
@@ -154,6 +154,16 @@ nb set tasks git_push_remote origin
 Or run `nb sync` manually.
 
 ## nb plugins
+
+### `nb daily` — daily journal (optional, recommended)
+
+[daily.nb-plugin](https://github.com/xwmx/nb/blob/master/plugins/daily.nb-plugin) writes timestamped notes to `YYYYMMDD.md`. tw2nb uses the same filename format and title convention, so task archive entries and your own daily notes share the same file naturally.
+
+```bash
+nb plugin install https://github.com/xwmx/nb/blob/master/plugins/daily.nb-plugin
+nb daily "picked up where I left off"   # adds a timestamped entry to today's file
+nb daily                                # show today's log
+```
 
 ### `nb info` — Taskwarrior task info
 

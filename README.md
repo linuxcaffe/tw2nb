@@ -1,213 +1,192 @@
+- Project: https://github.com/linuxcaffe/tw2nb
+- Issues:  https://github.com/linuxcaffe/tw2nb/issues
+
 # tw2nb
 
-Archives Taskwarrior task events to [nb](https://xwmx.github.io/nb/) as structured todo notes and a running daily journal.
+Archives completed Taskwarrior tasks to [nb](https://xwmx.github.io/nb/) as searchable todos and a running daily journal.
 
-## What it does
+## TL;DR
 
-On three triggering events:
+- Completed tasks land in nb as closed todos — with tags, annotations, and task notes intact
+- `task log` (already-done tasks) archives the same way as `task done`
+- A running daily journal records completions, deletions, and annotation events alongside your other notes
+- Project-based routing: `tw.gtk` and `tw.sanity` go to a `tw` notebook automatically
+- Annotations and annn task notes can go into the journal instead of the per-task note — your choice
+- `nb info tasks:42` pulls live Taskwarrior data for any archived task — the round-trip
+- `nb g "#project/tw"` searches your archive by project, tag, or UUID across all notebooks
+- `tw2nb-retro` backfills tasks that completed before the hook was installed
+- Requires Taskwarrior 2.6.2, Python 3.6+, and [nb](https://xwmx.github.io/nb/)
 
-| Event | Trigger | Action |
-|-------|---------|--------|
-| `completed` | `task done` | Create/close nb todo · journal entry · annotate task with nb ref |
-| `logged` | `task log` | Same as completed — archived immediately on add |
-| `deleted` | `task delete` | Archive to nb · journal entry (if `on_delete=yes`) |
-| `annotated` | new annotation on active task | Append to task note (journal entry if `journal_annotated=yes`) |
+## Why this exists
 
-**Per-task note** (`tasks:` notebook) — one nb todo per task, updated on each event. Full annotation history. Closed automatically on completion.
+Taskwarrior is built around the present. Completed tasks get marked done and effectively disappear from view — there is no native way to search your task history by project, browse annotations you added along the way, or see what you accomplished on a given day alongside the rest of your notes.
 
-**Running journal** (`home:` notebook) — dated entries (`20260302.md`) with completed/deleted tasks alongside any other nb content. Grouped by day. Compatible with [daily.nb-plugin](https://github.com/xwmx/nb/blob/master/plugins/daily.nb-plugin) — both write to the same file.
+`task completed` and `task log` can show raw history, but the data is flat, unsearchable by content, and disconnected from any note-taking system. Annotations added over two weeks of work on a task disappear with it on completion. Attached note files stay in `~/.task/notes/`, uncoupled from anything else.
 
-## Note format
+nb solves the archive half of this problem — it is a fast, git-backed, terminal-first note system with todos, tags, full-text search, and a daily journal. What it lacks is any connection to Taskwarrior. tw2nb is that connection.
 
-### Journal entry (completed task)
+`nb info` closes the loop in the other direction. From any archived task note or journal page, you can pull up the live Taskwarrior record for every referenced task — one command, no UUID hunting.
 
-```markdown
-## ✅ Fix the login bug
-> #project/work/web #bug
-> `abc12345` · created 2026-02-28 · done 2026-03-02 (3d)
+## What this means for you
 
-[→ task note](tasks:42)
+Every task you finish flows automatically into your notes — with its tags, annotations, and attached note files — without any extra steps. Your daily journal becomes a shared space where Taskwarrior completions appear alongside everything else you write. When you want to revisit a task, search your archive by project or tag, or check whether a related task is still active, it is all one command away.
 
----
-```
+## Core concepts
 
-### Task note (per-UUID nb todo)
+**Task note** — a per-UUID nb todo, one per Taskwarrior task, created or updated on each archived event. Lives in the configured task notebook, or in a project-derived notebook when `project_notebooks` is enabled.
 
-```markdown
-# [ ] Fix the login bug
-#project/work/web #bug
+**Journal entry** — a compact block appended to a dated note (`YYYYMMDD.md`) in your journal notebook. Appears alongside any other content you write that day. Compatible with `nb daily` — both write to the same file.
 
-**UUID:** `abc12345`
-**Project:** work.web
-**Priority:** H
-**Created:** 2026-02-28
-
----
-
-## 2026-03-01 — Annotation added 📝
-
-*2026-03-01 — Found culprit in auth middleware*
-
-## 2026-03-02 — Completed ✅
-*Duration: 3d*
-
-### Annotations
-
-1. **2026-02-28** — Started investigating...
-2. **2026-03-01** — Found culprit in auth middleware
-3. **2026-03-02** — Fixed and deployed ✓
-```
-
-## Tag mapping
-
-| Taskwarrior | nb |
-|-------------|-----|
-| `+bug` | `#bug` |
-| `project:work.web` | `#project/work/web` |
+**annn tasknote** — a freeform note file attached to a task by the [annn hook](https://github.com/linuxcaffe/tw-ann-hook), stored in `~/.task/notes/`. tw2nb transfers its contents to nb on task completion or deletion.
 
 ## Installation
 
+### Option 1 — Install script
+
 ```bash
-# 1. Create the nb tasks notebook
-nb notebooks add tasks
-
-# 2. Run the installer
-bash tw2nb.install
-
-# 3. Edit config
-$EDITOR ~/.task/config/tw2nb.rc
-
-# 4. Test
-task <id> done
-nb tasks: list
+git clone https://github.com/linuxcaffe/tw2nb
+bash tw2nb/tw2nb.install
 ```
 
-## Config (`~/.task/config/tw2nb.rc`)
+Installs hooks to `~/.task/hooks/`, library and scripts to `~/.task/scripts/`, config to `~/.task/config/tw2nb.rc` (skipped if already present), and nb plugins to `~/.nb/.plugins/`.
+
+### Option 2 — Via [awesome-taskwarrior](https://github.com/linuxcaffe/awesome-taskwarrior)
+
+```bash
+tw -I tw2nb
+```
+
+### Option 3 — Manual
+
+```bash
+# 1. Create nb notebook for task notes
+nb notebooks add tasks
+
+# 2. Copy hook and library files
+cp on-add_tw2nb.py on-modify_tw2nb.py ~/.task/hooks/
+chmod +x ~/.task/hooks/on-add_tw2nb.py ~/.task/hooks/on-modify_tw2nb.py
+cp tw2nb_lib.py tw2nb-retro ~/.task/scripts/
+chmod +x ~/.task/scripts/tw2nb-retro
+
+# 3. Copy config (skip if upgrading — do not overwrite your settings)
+cp tw2nb.rc ~/.task/config/
+
+# 4. Install nb plugins
+nb plugin install plugins/tw.nb-plugin      # nb info command
+nb plugin install plugins/grep.nb-plugin    # nb g search command
+
+# 5. Add config include to .taskrc
+echo "include ~/.task/config/tw2nb.rc" >> ~/.taskrc
+
+# 6. Verify
+task diag | grep hooks
+```
+
+## Configuration
+
+`~/.task/config/tw2nb.rc`:
 
 ```ini
 tw2nb.notebook          = tasks   # nb notebook for per-task todos
-tw2nb.journal           = home    # nb notebook for running journal
+tw2nb.journal           = home    # nb notebook for the running journal
 tw2nb.on_delete         = no      # archive deleted tasks too (yes/no)
-tw2nb.journal_annotated = no      # also journal annotation events (yes/no)
+tw2nb.journal_annotated = no      # also write a journal entry on annotation events (yes/no)
 tw2nb.sync              = no      # run 'nb sync' after each archive (yes/no)
-tw2nb.project_notebooks = no      # one notebook per TW project (yes/no)
-tw2nb.delete_tasknote   = no      # delete annn tasknote after transfer (yes/no)
+tw2nb.project_notebooks = no      # route tasks to a per-project notebook (yes/no)
+tw2nb.project_depth     = top     # top: 'tw.gtk'→'tw'  |  full: 'tw.gtk'→'tw-gtk'
+tw2nb.delete_tasknote   = no      # delete annn note file after transfer (yes/no)
+tw2nb.annotations_in    = note    # where annotation history goes: note or journal
+tw2nb.tasknote_in       = note    # where annn note content goes: note or journal
 ```
 
-### delete_tasknote
+**`project_notebooks`** — when `yes`, tasks are routed to a notebook derived from their Taskwarrior project rather than `tw2nb.notebook`. Tasks with no project fall back to `tw2nb.notebook`. Notebooks are created automatically if absent.
 
-When `yes`: after a task completes or is deleted, if an [annn](https://github.com/linuxcaffe/tw-ann-hook) `note:` label exists, the contents of `~/.task/notes/<slug>-<uuid8>.note.md` are appended to the nb task note under `## Task Note`, then the file is deleted.
+**`project_depth`** — controls how the notebook name is derived from the project. `top` uses only the first segment: `tw.gtk` and `tw.sanity` both go to notebook `tw`. `full` uses the complete path with dots replaced by hyphens: `tw.gtk` → notebook `tw-gtk`.
 
-When `no` (default): contents are transferred but the tasknote file is left in place.
+**`annotations_in`** / **`tasknote_in`** — redirect content to one destination only. Set to `journal` and the annotation history (or annn note content) is embedded in the journal entry on completion, rather than appended to the task note. Not both.
 
-### journal_annotated
+## Usage
 
-When `no` (default): annotations update the per-task note only. The journal stays clean as a "what finished today" log.
-
-When `yes`: each new annotation also adds a brief `📝` entry to the journal. Note that completing an annotated task will then produce two journal entries for that task on the same day — the annotation event and the completion event.
-
-## Retrospective backfill
-
-Archive completed tasks that predate the hook installation:
+**Completing and logging tasks**
 
 ```bash
-# Preview what would be archived
-tw2nb-retro --dry-run
-
-# Archive all completed tasks
-tw2nb-retro
-
-# Archive tasks completed since a specific date
-tw2nb-retro --from 2026-01-01
-
-# Archive deleted tasks too
-tw2nb-retro --status all
-
-# Verbose output
-tw2nb-retro -v
+task 42 done                   # archives to nb; adds 'nb: tasks:N' breadcrumb to task
+task log "Fixed the login bug" # already done — archives immediately on add
 ```
 
-Safe to re-run — skips tasks already present in nb (keyed by uuid8).
-
-## Querying your archive
+**Archiving deleted tasks** (requires `tw2nb.on_delete = yes`)
 
 ```bash
-nb tasks: list                          # all task notes
-nb todos --closed                       # completed tasks
-nb search "#project/work/web"           # by project
-nb search "#bug"                        # by tag
-nb search "abc12345"                    # by uuid8
-nb home: list                           # journal entries
-nb browse                               # web UI
+task 17 delete                 # archives to nb journal before removal
 ```
 
-## Git / sync
-
-nb auto-commits every operation. To push to a remote:
+**Viewing archived tasks**
 
 ```bash
-nb set tasks git_push_remote origin
-# then enable sync in tw2nb.rc:
-# tw2nb.sync = yes
+nb tasks: list                 # all task notes
+nb todos --closed              # completed task todos only
+nb home: 3                     # a specific journal page
+nb info tasks:45               # live TW info for the task in note 45
+nb info home:3                 # TW info for every task referenced in a journal page
 ```
 
-Or run `nb sync` manually.
-
-## nb plugins
-
-### `nb daily` — daily journal (optional, recommended)
-
-[daily.nb-plugin](https://github.com/xwmx/nb/blob/master/plugins/daily.nb-plugin) writes timestamped notes to `YYYYMMDD.md`. tw2nb uses the same filename format and title convention, so task archive entries and your own daily notes share the same file naturally.
+**Searching the archive**
 
 ```bash
-nb plugin install https://github.com/xwmx/nb/blob/master/plugins/daily.nb-plugin
-nb daily "picked up where I left off"   # adds a timestamped entry to today's file
-nb daily                                # show today's log
+nb g "#project/tw"             # all tasks in the tw project
+nb g "#bug"                    # by tag
+nb g "abc12345"                # by uuid8
+nb g -C 4 "login bug"          # 4 lines of context around each match
+nb g -l "abc12345"             # list matching notes only (no context)
 ```
 
-### `nb info` — Taskwarrior task info
-
-`nb info [<notebook>:][<id>]` shows Taskwarrior info for tasks referenced in an nb note.
+**Backfilling past tasks**
 
 ```bash
-nb info tasks:45      # task info for a single task note
-nb info home:3        # task info for every uuid8 found in a journal page
+tw2nb-retro --dry-run              # preview what would be archived
+tw2nb-retro                        # archive all completed tasks
+tw2nb-retro --from 2026-01-01      # only tasks completed since a date
+tw2nb-retro --status all           # include deleted tasks too
+tw2nb-retro -v                     # verbose: show each task as it is processed
 ```
 
-### `nb nb_grep` / `nb g` — context search
+## Example workflow
 
-`nb g <pattern>` searches notes with context lines (like `grep -C`), grouped by note.
-Addresses the one-line-per-result limitation of `nb search` ([nb issue #437](https://github.com/xwmx/nb/issues/437)).
+1. Complete a task that has annotations and an attached annn note:
+   ```
+   task 42 done
+   ```
 
-```bash
-nb g "#bug"                 # search all notebooks
-nb g "#bug" tasks:          # search tasks notebook only
-nb g -C 4 "auth middleware" # 4 lines of context
-nb g -I "taskwarrior"       # case-insensitive
-nb g -l "abc12345"          # list matching notes only
-```
+2. tw2nb archives it automatically:
+   - A closed todo appears in your `tasks` notebook (or project notebook if configured).
+   - Today's journal gets a `## ✅ Fixed the login bug` entry with tags, UUID, duration, and — depending on `annotations_in` / `tasknote_in` — annotation history and task note content.
+   - The task receives a breadcrumb: `nb: tasks:42`.
 
-`grep.nb-plugin` is also available standalone (no Taskwarrior required) at **[nb-plugins](https://github.com/linuxcaffe/nb-plugins)**:
+3. Two weeks later, you browse that journal page and want to check a related task:
+   ```
+   nb info home:20260320
+   ```
+   `nb info` finds every uuid8 on the page and runs `task info` for each. Active tasks show their current state; tasks not found in Taskwarrior are flagged cleanly.
 
-```bash
-nb plugin install https://raw.githubusercontent.com/linuxcaffe/nb-plugins/main/grep.nb-plugin
-```
+4. You search everything related to a project across all notebooks:
+   ```
+   nb g "#project/tw"
+   ```
 
-`tw2nb.install` installs both plugins automatically if `nb` is present.
-Manual install from this repo:
-```bash
-nb plugin install /path/to/tw2nb/plugins/tw.nb-plugin
-nb plugin install /path/to/tw2nb/plugins/grep.nb-plugin
-```
+## Project status
 
-## Files
+⚠️ Early release. The hook is stable for daily use but the configuration surface and note format may change before 1.0.
 
-| File | Installed to |
-|------|-------------|
-| `on-add_tw2nb.py` | `~/.task/hooks/` |
-| `on-modify_tw2nb.py` | `~/.task/hooks/` |
-| `tw2nb_lib.py` | `~/.task/scripts/` |
-| `tw2nb-retro` | `~/.task/scripts/` |
-| `tw2nb.rc` | `~/.task/config/` |
-| `plugins/tw.nb-plugin` | `~/.nb/.plugins/` |
-| `plugins/grep.nb-plugin` | `~/.nb/.plugins/` |
+## Further reading
+
+- [nb](https://xwmx.github.io/nb/) — the note-taking tool tw2nb archives to
+- [annn](https://github.com/linuxcaffe/tw-ann-hook) — annotation and task-note hook that tw2nb integrates with
+- [awesome-taskwarrior](https://github.com/linuxcaffe/awesome-taskwarrior) — the ecosystem this lives in
+
+## Metadata
+
+- License: MIT
+- Language: Python 3, Bash
+- Requires: Taskwarrior 2.6.2, Python 3.6+, [nb](https://xwmx.github.io/nb/)
+- Platforms: Linux
+- Version: 0.1.0

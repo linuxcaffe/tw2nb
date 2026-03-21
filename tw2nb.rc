@@ -23,11 +23,27 @@ tw2nb.journal_annotated = no
 tw2nb.sync       = no
 
 # Create a separate nb notebook per Taskwarrior project (yes/no)
-# When yes, tasks in project 'work.web' go to notebook 'work-web'.
+# When yes, the task note goes to a notebook derived from the task's project.
 # When no (default), all tasks go to tw2nb.notebook with #project/... tags.
 tw2nb.project_notebooks = no
+
+# How much of the project path to use as the notebook name (top|full)
+# top  (default): project 'tw.gtk' → notebook 'tw'  (sub-projects share one notebook)
+# full:           project 'tw.gtk' → notebook 'tw-gtk'  (one notebook per full path)
+# Only applies when project_notebooks=yes. Notebooks are auto-created if absent.
+tw2nb.project_depth = top
 
 # Delete annn tasknote file after transferring its contents to nb (yes/no)
 # When yes, ~/.task/notes/<slug>-<uuid8>.note.md is removed on task completion
 # or deletion, after its contents are appended to the nb task note.
 tw2nb.delete_tasknote = no
+
+# Where to put the full annotation history on task completion/deletion (note|journal)
+# note    (default): annotations appended to the per-task note
+# journal:           annotations included in the journal entry instead
+tw2nb.annotations_in = note
+
+# Where to put annn tasknote content on task completion/deletion (note|journal)
+# note    (default): tasknote content appended to the per-task note
+# journal:           tasknote content included in the journal entry instead
+tw2nb.tasknote_in = note

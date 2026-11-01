@@ -174,6 +174,54 @@ def notebook_for_task(task: dict, cfg: dict) -> str:
     return name
 
 
+def nb_dir() -> Path:
+    return Path(os.environ.get('NB_DIR') or Path.home() / '.nb')
+
+
+def note_selector(notebook: str, note_id: str) -> str:
+    """A path selector (`tasks:20260301120000.todo.md`) for an nb note id: ids are per folder
+    and shift, paths don't (nb-web invariant 23). Falls back to the id if nb can't say."""
+    r = run_nb('show', f'{notebook}:{note_id}', '--path', '--no-color')
+    out = re.sub(r'\x1b\[[0-9;?]*[A-Za-z]|\x1b\([A-Za-z0-9]', '', r.stdout).strip()
+    try:
+        rel = Path(out).relative_to(nb_dir() / notebook)
+        if r.returncode == 0 and rel.parts:
+            return f'{notebook}:{rel.as_posix()}'
+    except ValueError:
+        pass
+    return f'{notebook}:{note_id}'
+
+
+def linked_tasknote(task: dict) -> Optional[str]:
+    """The selector of the task's own nb note, if it has one: an `nb:` annotation naming a
+    note whose frontmatter `tw:` names this task (made by nb-plugins `nb tw`). A bare path
+    means tasknotes:, as in the plugin."""
+    uuid = task.get('uuid', '')
+    if not uuid:
+        return None
+    root = nb_dir()
+    for ann in task.get('annotations', []):
+        desc = ann.get('description', '')
+        if not desc.startswith('nb: '):
+            continue
+        sel = desc[4:].strip()
+        nb, sep, rel = sel.partition(':')
+        if not (sep and (root / nb / '.git').exists()):
+            nb, rel = 'tasknotes', sel
+        if not rel or rel.startswith('/') or '..' in Path(rel).parts or not rel.endswith('.md'):
+            continue
+        path = root / nb / rel
+        try:
+            head = path.read_text(errors='replace')[:4096]
+        except OSError:
+            continue
+        if head.startswith('---\n'):
+            fm = head[4:].split('\n---', 1)[0]
+            if re.search(r'^(?:tw:|\s+-)\s*' + re.escape(uuid) + r'\s*$', fm, re.M):
+                return f'{nb}:{rel}'
+    return None
+
+
 def find_task_note(notebook: str, uuid8: str) -> Optional[str]:
     """Search nb for an existing task note by uuid8. Returns note ID or None.
 
@@ -431,7 +479,7 @@ def format_journal_entry(task: dict, event: str, today: str, note_ref: Optional[
         heading = f'## 📝 {desc}'
         byline  = f'> {tags}  \n> `{uuid8}`'
 
-    note_link = f'[→ task note]({note_ref})' if note_ref else ''
+    note_link = f'→ task note: [[{note_ref}]]' if note_ref else ''
 
     lines = [heading, byline, '']
 
@@ -553,6 +601,17 @@ def archive(task: dict, event: str, cfg: dict, today: str = None) -> Optional[st
     annotations_in_journal = cfg.get('annotations_in', 'note') == 'journal'
     tasknote_in_journal    = cfg.get('tasknote_in',    'note') == 'journal'
 
+    # --- A task with its own nb tasknote (nb tw): that note is the archive ---
+    # No second per-task todo, no tasknote transfer, no breadcrumb (the task already links
+    # its note); the on-exit hook mirrors the status into it. The journal still records it.
+    linked = linked_tasknote(task)
+    if linked:
+        if event != 'annotated' or cfg.get('journal_annotated'):
+            ann_text = format_annotations(task) if annotations_in_journal and event in ('completed', 'deleted') else None
+            append_to_journal(journal, today, format_journal_entry(
+                task, event, today, linked, annotations=ann_text))
+        return None
+
     # --- Per-UUID task note ---
     event_section = format_event_section(
         task, event, today,
@@ -580,7 +639,7 @@ def archive(task: dict, event: str, cfg: dict, today: str = None) -> Optional[st
             elif note_id:
                 transfer_tasknote(note_file, notebook, note_id, cfg.get('delete_tasknote', False))
 
-    note_ref = f'{notebook}:{note_id}' if note_id else None
+    note_ref = note_selector(notebook, note_id) if note_id else None
 
     # --- Running journal ---
     if event != 'annotated' or cfg.get('journal_annotated'):

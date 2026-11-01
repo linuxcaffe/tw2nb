@@ -39,6 +39,8 @@ Every task you finish flows automatically into your notes — with its tags, ann
 
 **annn tasknote** — a freeform note file attached to a task by the [annn hook](https://github.com/linuxcaffe/tw-ann-hook), stored in `~/.task/notes/`. tw2nb transfers its contents to nb on task completion or deletion.
 
+**nb tasknote** — with the [tw.nb-plugin](https://github.com/linuxcaffe/nb-plugins#twnb-plugin) (`nb tw`), a task's note is an nb note it links with `nb: tasknotes:<path>`, and whose frontmatter names the task back. That note *is* the archive: tw2nb makes no second per-task todo and transfers nothing, it only writes the journal entry (linking the note), and its on-exit hook runs `nb tw status` so the note shows the task's status (`tw_status`, `tw_end`).
+
 ## Installation
 
 ### Option 1 — Install script
@@ -63,8 +65,8 @@ tw -I tw2nb
 nb notebooks add tasks
 
 # 2. Copy hook and library files
-cp on-add_tw2nb.py on-modify_tw2nb.py ~/.task/hooks/
-chmod +x ~/.task/hooks/on-add_tw2nb.py ~/.task/hooks/on-modify_tw2nb.py
+cp on-add_tw2nb.py on-modify_tw2nb.py on-exit_tw2nb.py ~/.task/hooks/
+chmod +x ~/.task/hooks/on-add_tw2nb.py ~/.task/hooks/on-modify_tw2nb.py ~/.task/hooks/on-exit_tw2nb.py
 cp tw2nb_lib.py tw2nb-retro ~/.task/scripts/
 chmod +x ~/.task/scripts/tw2nb-retro
 
@@ -72,7 +74,8 @@ chmod +x ~/.task/scripts/tw2nb-retro
 cp tw2nb.rc ~/.task/config/
 
 # 4. Install nb plugins
-nb plugin install plugins/tw.nb-plugin      # nb info command
+nb plugin install https://raw.githubusercontent.com/linuxcaffe/nb-plugins/main/tw.nb-plugin
+                                            # nb tw (tasknotes) and nb info
 nb plugin install plugins/grep.nb-plugin    # nb g search command
 
 # 5. Add config include to .taskrc
@@ -110,7 +113,7 @@ tw2nb.tasknote_in       = note    # where annn note content goes: note or journa
 **Completing and logging tasks**
 
 ```bash
-task 42 done                   # archives to nb; adds 'nb: tasks:N' breadcrumb to task
+task 42 done                   # archives to nb; adds an 'nb: tasks:<file>' breadcrumb to task
 task log "Fixed the login bug" # already done — archives immediately on add
 ```
 
@@ -160,7 +163,10 @@ tw2nb-retro -v                     # verbose: show each task as it is processed
 2. tw2nb archives it automatically:
    - A closed todo appears in your `tasks` notebook (or project notebook if configured).
    - Today's journal gets a `## ✅ Fixed the login bug` entry with tags, UUID, duration, and — depending on `annotations_in` / `tasknote_in` — annotation history and task note content.
-   - The task receives a breadcrumb: `nb: tasks:42`.
+   - The task receives a breadcrumb: `nb: tasks:20260320194750.todo.md` (a path: nb's numeric ids
+     are per folder and shift). The journal entry links it as `[[tasks:20260320194750.todo.md]]`.
+   - If the task has an nb tasknote (`nb tw`), none of the above per-task archive happens: the
+     tasknote is the archive, the journal links it, and the on-exit hook marks it completed.
 
 3. Two weeks later, you browse that journal page and want to check a related task:
    ```
@@ -189,4 +195,4 @@ tw2nb-retro -v                     # verbose: show each task as it is processed
 - Language: Python 3, Bash
 - Requires: Taskwarrior 2.6.2, Python 3.6+, [nb](https://xwmx.github.io/nb/)
 - Platforms: Linux
-- Version: 0.1.0
+- Version: 1.3.0

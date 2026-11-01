@@ -195,4 +195,4 @@ tw2nb-retro -v                     # verbose: show each task as it is processed
 - Language: Python 3, Bash
 - Requires: Taskwarrior 2.6.2, Python 3.6+, [nb](https://xwmx.github.io/nb/)
 - Platforms: Linux
-- Version: 1.3.0
+- Version: 1.3.1

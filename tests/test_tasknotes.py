@@ -63,3 +63,50 @@ def test_on_exit_without_the_plugin_does_nothing(plain):
     plain.task(uuid, 'annotate', '--', 'nb: tasknotes:x.note.md')
     r = plain.hook('on-exit_tw2nb.py', plain.export(uuid))
     assert r.returncode == 0
+
+
+# ── nb: requests (tw-nb-interop M7 (b), djp 2026-11-02) ───────────────────────────────────
+# A bare `nb:` (or `nb: <notebook>:`) annotation asks for a note; on-exit runs `nb tw note`,
+# which makes it and swaps the request for the real link. From any client, nobody names it.
+
+def anns(env, uuid):
+    return [a['description'] for a in env.export(uuid).get('annotations', [])]
+
+
+def test_on_exit_fulfils_a_bare_request(env):
+    uuid = env.add_task('--', 'Order the tiles')
+    env.task(uuid, 'annotate', '--', 'nb:')
+    r = env.hook('on-exit_tw2nb.py', env.export(uuid))
+    assert r.returncode == 0, r.stderr
+    notes = list((env.nb_dir / 'tasknotes').glob(f'*{uuid[:8]}.note.md'))
+    assert len(notes) == 1
+    assert anns(env, uuid) == [f'nb: tasknotes:{notes[0].name}']
+
+
+def test_on_exit_fulfils_a_request_for_another_notebook(env):
+    env.run('nb', 'notebooks', 'add', 'acme')
+    uuid = env.add_task('--', 'Call Jones')
+    env.task(uuid, 'annotate', '--', 'nb: acme:')
+    env.hook('on-exit_tw2nb.py', env.export(uuid))
+    notes = list((env.nb_dir / 'acme').glob(f'*{uuid[:8]}.note.md'))
+    assert len(notes) == 1
+    assert anns(env, uuid) == [f'nb: acme:{notes[0].name}']
+
+
+def test_on_exit_request_for_a_missing_notebook_never_fails_the_command(env):
+    uuid = env.add_task('--', 'Nowhere')
+    env.task(uuid, 'annotate', '--', 'nb: nosuch:')
+    r = env.hook('on-exit_tw2nb.py', env.export(uuid))
+    assert r.returncode == 0
+    assert 'nosuch' in r.stderr
+    assert anns(env, uuid) == ['nb: nosuch:']
+
+
+def test_on_modify_a_request_is_not_archived_as_an_annotation(env):
+    uuid = env.add_task('--', 'Just asking')
+    before = env.export(uuid)
+    after = dict(before, annotations=[{'entry': '20261103T000000Z', 'description': 'nb:'}])
+    tasks_before = sorted(p.name for p in (env.nb_dir / 'tasks').glob('*.md'))
+    out = env.hook('on-modify_tw2nb.py', before, after)
+    assert json.loads(out.stdout.strip().splitlines()[-1])['annotations'] == after['annotations']
+    assert sorted(p.name for p in (env.nb_dir / 'tasks').glob('*.md')) == tasks_before

@@ -117,6 +117,16 @@ task 42 done                   # archives to nb; adds an 'nb: tasks:<file>' brea
 task log "Fixed the login bug" # already done — archives immediately on add
 ```
 
+**Asking for a task's note** (1.4.0, needs nb-plugins' `tw.nb-plugin`)
+
+```bash
+task 42 annotate nb:           # a note in tasknotes:, made at once; the annotation becomes its link
+task 42 annotate nb: acme:     # the same, in the acme notebook (mind the trailing colon)
+```
+
+Works from any client (tw-web, vit, the phone): the on-exit hook runs `nb tw note`. An unknown
+notebook leaves the request and says why.
+
 **Archiving deleted tasks** (requires `tw2nb.on_delete = yes`)
 
 ```bash

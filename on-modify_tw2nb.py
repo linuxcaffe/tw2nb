@@ -35,6 +35,7 @@ import sys
 from pathlib import Path
 from datetime import datetime
 import json
+import re
 import subprocess
 from typing import Optional
 # ============================================================================
@@ -112,6 +113,9 @@ NB          = '/usr/local/bin/nb'
 # Event detection
 # ============================================================================
 
+REQUEST = re.compile(r'^nb:(?:\s+([A-Za-z0-9_.-]+):)?\s*$')   # as tw.nb-plugin's
+
+
 def detect_event(original: dict, modified: dict) -> Optional[str]:
     orig_s = original.get('status', '')
     mod_s  = modified.get('status', '')
@@ -126,6 +130,10 @@ def detect_event(original: dict, modified: dict) -> Optional[str]:
         orig_n = len(original.get('annotations', []))
         mod_n  = len(modified.get('annotations', []))
         if mod_n > orig_n:
+            # an nb: request isn't news to archive: on-exit turns it into the task's note
+            new = modified.get('annotations', [])[orig_n:]
+            if all(REQUEST.match(a.get('description', '')) for a in new):
+                return None
             return 'annotated'
 
     return None

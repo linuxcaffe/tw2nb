@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 on-exit_tw2nb.py - Mirror task status into nb tasknotes
-Version: 1.4.2
+Version: 1.4.3
 
 After Taskwarrior has written its changes, runs `nb tw status <uuid>` (nb-plugins
 tw.nb-plugin) for every added or modified task that links an nb note by path

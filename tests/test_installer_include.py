@@ -56,3 +56,31 @@ def test_remove_drops_an_include_from_either_file(home):
     run(home, 'remove')
     assert 'config/tw2nb.rc' not in inc.read_text()
     assert 'old-tw2nb.rc' in inc.read_text()
+
+
+def test_installs_from_only_the_files_tw_downloads(tmp_path):
+    """1.4.3: `tw -u` stages only the .meta's files=, so plugins/ isn't there. The installer copied
+    plugins/grep.nb-plugin whenever nb was here and grep wasn't, and set -e failed the whole update
+    (the phone, 2026-11-04). tw2nb doesn't use grep; nb-plugins owns it. Nothing outside files=."""
+    import re, shutil
+    stage = tmp_path / 'stage'
+    stage.mkdir()
+    files = re.search(r'^files=(.*)$', (REPO / 'tw2nb.meta').read_text(), re.M).group(1).split(',')
+    for entry in files:
+        name = entry.split(':')[0]
+        shutil.copy(REPO / name, stage / name)
+    shutil.copy(REPO / 'tw2nb.install', stage / 'tw2nb.install')
+    home = tmp_path / 'home'
+    for d in ('config', 'hooks', 'scripts'):
+        (home / '.task' / d).mkdir(parents=True)
+    (home / '.nb' / '.plugins').mkdir(parents=True)          # nb's plugins folder, no grep in it
+    bin_ = tmp_path / 'bin'
+    bin_.mkdir()
+    (bin_ / 'nb').write_text('#!/bin/sh\n')
+    (bin_ / 'nb').chmod(0o755)
+    env = {'PATH': f"{bin_}:{os.environ['PATH']}", 'HOME': str(home)}
+    r = subprocess.run(['bash', str(stage / 'tw2nb.install'), 'install'], env=env,
+                       capture_output=True, text=True, timeout=60)
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert not (home / '.nb' / '.plugins' / 'grep.nb-plugin').exists()
+    assert 'nb plugins install' in r.stdout                   # the hint names the real command

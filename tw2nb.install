@@ -4,7 +4,7 @@ set -euo pipefail
 
 # ============================================================================
 # tw2nb - Standalone Installer
-# Version: 1.4.1
+# Version: 1.4.2
 #
 # Installs:
 #   ~/.task/hooks/on-modify_tw2nb.py
@@ -19,7 +19,7 @@ set -euo pipefail
 # removed here, so an installed (or symlinked dev) copy is left alone.
 # ============================================================================
 
-VERSION="1.4.1"
+VERSION="1.4.2"
 APPNAME="tw2nb"
 
 RED='\033[0;31m'

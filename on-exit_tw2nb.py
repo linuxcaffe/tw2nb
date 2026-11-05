@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 on-exit_tw2nb.py - Mirror task status into nb tasknotes
-Version: 1.4.1
+Version: 1.4.2
 
 After Taskwarrior has written its changes, runs `nb tw status <uuid>` (nb-plugins
 tw.nb-plugin) for every added or modified task that links an nb note by path
@@ -109,12 +109,16 @@ def links_a_note(task: dict) -> bool:
                for a in task.get('annotations', []))
 
 
+TW_NB_PLUGIN_URL = 'https://raw.githubusercontent.com/linuxcaffe/nb-plugins/main/tw.nb-plugin'
+
+
 def main() -> int:
     lines = sys.stdin.read().splitlines()
     nb = shutil.which('nb')
     plugin = Path(os.environ.get('NB_DIR') or Path.home() / '.nb') / '.plugins' / 'tw.nb-plugin'
-    if not nb or not plugin.exists():
-        return 0
+    if not nb:
+        return 0        # no nb here: the notes live on another station, nothing to say
+    have_plugin = plugin.exists()
     seen = set()
     for line in lines:
         try:
@@ -128,6 +132,12 @@ def main() -> int:
         cmd = 'note' if has_request(task) else 'status' if links_a_note(task) else None
         if not cmd:
             continue
+        if not have_plugin:
+            # Never silently (M7): a hook can't ask, so it names the install, once per run
+            # (mobilize init installs it; djp 2026-11-04)
+            print(f'[tw2nb] nb-plugin tw is required for task notes, and is missing here. '
+                  f'Install it: nb plugins install {TW_NB_PLUGIN_URL}', file=sys.stderr)
+            return 0
         seen.add(uuid)
         try:
             r = subprocess.run([nb, 'tw', cmd, uuid], capture_output=True, text=True,

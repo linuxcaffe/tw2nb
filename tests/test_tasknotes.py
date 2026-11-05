@@ -58,11 +58,24 @@ def test_on_exit_skips_tasks_without_a_path_link(env):
     assert r.returncode == 0 and r.stdout == ''
 
 
-def test_on_exit_without_the_plugin_does_nothing(plain):
+def test_on_exit_without_the_plugin_changes_nothing_but_says_so(plain):
+    """1.4.2 (M7: never fail silently; djp 2026-11-04: a missing nb-plugin of ours names its
+    install): nb is here, the plugin isn't, and a task links a note: one line says what's missing
+    and the command. The phone's synced hooks did nothing, silently, until mobilize 0.10.1."""
     uuid = plain.add_task('--', 'No plugin')
     plain.task(uuid, 'annotate', '--', 'nb: tasknotes:x.note.md')
     r = plain.hook('on-exit_tw2nb.py', plain.export(uuid))
     assert r.returncode == 0
+    out = r.stdout + r.stderr
+    assert "nb-plugin tw is required" in out
+    assert 'nb plugins install https://raw.githubusercontent.com/linuxcaffe/nb-plugins/main/tw.nb-plugin' in out
+    assert out.count('nb-plugin tw') == 1
+
+
+def test_on_exit_without_the_plugin_is_quiet_when_nothing_needs_it(plain):
+    uuid = plain.add_task('--', 'No note at all')
+    r = plain.hook('on-exit_tw2nb.py', plain.export(uuid))
+    assert r.returncode == 0 and 'nb-plugin' not in r.stdout + r.stderr
 
 
 # ── nb: requests (tw-nb-interop M7 (b), djp 2026-11-02) ───────────────────────────────────

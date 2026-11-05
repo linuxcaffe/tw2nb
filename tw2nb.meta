@@ -2,7 +2,7 @@
 # Archives Taskwarrior task events (done, log, delete, annotate) to nb as todos and running journal entries. Works with nb tw tasknotes: the tasknote is the archive and gets the task's status; a bare `nb:` annotation (or `nb: <notebook>:`) asks for the task's note, made at once.
 
 name=tw2nb
-version=1.4.1
+version=1.4.2
 type=hook
 description=Archives Taskwarrior task events (done, log, delete, annotate) to nb as todos and running journal entries. Works with nb tw tasknotes: the tasknote is the archive and gets the task's status; a bare `nb:` annotation (or `nb: <notebook>:`) asks for the task's note, made at once.
 repo=https://github.com/linuxcaffe/tw2nb

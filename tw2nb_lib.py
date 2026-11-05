@@ -603,7 +603,7 @@ def archive(task: dict, event: str, cfg: dict, today: str = None) -> Optional[st
 
     # --- A task with its own nb tasknote (nb tw): that note is the archive ---
     # No second per-task todo, no tasknote transfer, no breadcrumb (the task already links
-    # its note); the on-exit hook mirrors the status into it. The journal still records it.
+    # its note); nbnotes' on-exit hook mirrors the status into it. The journal still records it.
     linked = linked_tasknote(task)
     if linked:
         if event != 'annotated' or cfg.get('journal_annotated'):

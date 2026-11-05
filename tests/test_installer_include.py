@@ -84,3 +84,18 @@ def test_installs_from_only_the_files_tw_downloads(tmp_path):
     assert r.returncode == 0, r.stdout + r.stderr
     assert not (home / '.nb' / '.plugins' / 'grep.nb-plugin').exists()
     assert 'nb plugins install' in r.stdout                   # the hint names the real command
+
+
+def test_1_5_takes_out_the_old_on_exit_and_names_nbnotes(home):
+    """1.5.0: making and updating task notes moved to the nbnotes app (tw-nbnotes-hook), so the phone
+    can have them without tw2nb's archive and journal. An update takes out on-exit_tw2nb.py (two
+    copies would run nb tw twice) and, without nbnotes, says how to get it."""
+    hooks = home / '.task' / 'hooks'
+    (hooks / 'on-exit_tw2nb.py').write_text('# 1.4\n')
+    out = run(home, 'install')
+    assert not (hooks / 'on-exit_tw2nb.py').exists()
+    assert (hooks / 'on-modify_tw2nb.py').exists()
+    assert 'tw -I nbnotes' in out
+    assert 'on-exit_tw2nb' not in (home / '.task' / 'config' / '.tw_manifest').read_text()
+    (hooks / 'on-exit_nbnotes.py').write_text('# nbnotes\n')
+    assert 'tw -I nbnotes' not in run(home, 'install')

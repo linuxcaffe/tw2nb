@@ -130,7 +130,7 @@ def detect_event(original: dict, modified: dict) -> Optional[str]:
         orig_n = len(original.get('annotations', []))
         mod_n  = len(modified.get('annotations', []))
         if mod_n > orig_n:
-            # an nb: request isn't news to archive: on-exit turns it into the task's note
+            # an nb: request isn't news to archive: nbnotes' on-exit hook turns it into the task's note
             new = modified.get('annotations', [])[orig_n:]
             if all(REQUEST.match(a.get('description', '')) for a in new):
                 return None

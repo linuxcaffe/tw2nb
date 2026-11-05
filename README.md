@@ -39,7 +39,7 @@ Every task you finish flows automatically into your notes — with its tags, ann
 
 **annn tasknote** — a freeform note file attached to a task by the [annn hook](https://github.com/linuxcaffe/tw-ann-hook), stored in `~/.task/notes/`. tw2nb transfers its contents to nb on task completion or deletion.
 
-**nb tasknote** — with the [tw.nb-plugin](https://github.com/linuxcaffe/nb-plugins#twnb-plugin) (`nb tw`), a task's note is an nb note it links with `nb: tasknotes:<path>`, and whose frontmatter names the task back. That note *is* the archive: tw2nb makes no second per-task todo and transfers nothing, it only writes the journal entry (linking the note), and its on-exit hook runs `nb tw status` so the note shows the task's status (`tw_status`, `tw_end`).
+**nb tasknote** — with the [tw.nb-plugin](https://github.com/linuxcaffe/nb-plugins#twnb-plugin) (`nb tw`), a task's note is an nb note it links with `nb: tasknotes:<path>`, and whose frontmatter names the task back. That note *is* the archive: tw2nb makes no second per-task todo and transfers nothing, it only writes the journal entry (linking the note), and the [nbnotes](https://github.com/linuxcaffe/tw-nbnotes-hook) hook runs `nb tw status` so the note shows the task's status (`tw_status`, `tw_end`). Until 1.5.0 that hook was tw2nb's own `on-exit_tw2nb.py`; it's its own app now, so a station can keep task notes without tw2nb's archive and journal: `tw -I nbnotes`.
 
 ## Installation
 
@@ -65,8 +65,8 @@ tw -I tw2nb
 nb notebooks add tasks
 
 # 2. Copy hook and library files
-cp on-add_tw2nb.py on-modify_tw2nb.py on-exit_tw2nb.py ~/.task/hooks/
-chmod +x ~/.task/hooks/on-add_tw2nb.py ~/.task/hooks/on-modify_tw2nb.py ~/.task/hooks/on-exit_tw2nb.py
+cp on-add_tw2nb.py on-modify_tw2nb.py ~/.task/hooks/
+chmod +x ~/.task/hooks/on-add_tw2nb.py ~/.task/hooks/on-modify_tw2nb.py
 cp tw2nb_lib.py tw2nb-retro ~/.task/scripts/
 chmod +x ~/.task/scripts/tw2nb-retro
 
@@ -117,14 +117,14 @@ task 42 done                   # archives to nb; adds an 'nb: tasks:<file>' brea
 task log "Fixed the login bug" # already done — archives immediately on add
 ```
 
-**Asking for a task's note** (1.4.0, needs nb-plugins' `tw.nb-plugin`)
+**Asking for a task's note** (needs [nbnotes](https://github.com/linuxcaffe/tw-nbnotes-hook) and nb-plugins' `tw.nb-plugin`)
 
 ```bash
 task 42 annotate nb:           # a note in tasknotes:, made at once; the annotation becomes its link
 task 42 annotate nb: acme:     # the same, in the acme notebook (mind the trailing colon)
 ```
 
-Works from any client (tw-web, vit, the phone): the on-exit hook runs `nb tw note`. An unknown
+Works from any client (tw-web, vit, the phone): nbnotes' on-exit hook runs `nb tw note`. An unknown
 notebook leaves the request and says why.
 
 **Archiving deleted tasks** (requires `tw2nb.on_delete = yes`)
@@ -176,7 +176,7 @@ tw2nb-retro -v                     # verbose: show each task as it is processed
    - The task receives a breadcrumb: `nb: tasks:20260320194750.todo.md` (a path: nb's numeric ids
      are per folder and shift). The journal entry links it as `[[tasks:20260320194750.todo.md]]`.
    - If the task has an nb tasknote (`nb tw`), none of the above per-task archive happens: the
-     tasknote is the archive, the journal links it, and the on-exit hook marks it completed.
+     tasknote is the archive, the journal links it, and nbnotes' on-exit hook marks it completed.
 
 3. Two weeks later, you browse that journal page and want to check a related task:
    ```
@@ -205,4 +205,4 @@ tw2nb-retro -v                     # verbose: show each task as it is processed
 - Language: Python 3, Bash
 - Requires: Taskwarrior 2.6.2, Python 3.6+, [nb](https://xwmx.github.io/nb/)
 - Platforms: Linux
-- Version: 1.3.1
+- Version: 1.5.0

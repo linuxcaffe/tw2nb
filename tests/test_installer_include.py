@@ -83,7 +83,7 @@ def test_installs_from_only_the_files_tw_downloads(tmp_path):
                        capture_output=True, text=True, timeout=60)
     assert r.returncode == 0, r.stdout + r.stderr
     assert not (home / '.nb' / '.plugins' / 'grep.nb-plugin').exists()
-    assert 'nb plugins install' in r.stdout                   # the hint names the real command
+    assert 'nb plugins install' not in r.stdout   # 1.5.1: tw2nb needs no nb-plugin, so names none
 
 
 def test_1_5_takes_out_the_old_on_exit_and_names_nbnotes(home):

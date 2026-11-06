@@ -39,7 +39,7 @@ Every task you finish flows automatically into your notes — with its tags, ann
 
 **annn tasknote** — a freeform note file attached to a task by the [annn hook](https://github.com/linuxcaffe/tw-ann-hook), stored in `~/.task/notes/`. tw2nb transfers its contents to nb on task completion or deletion.
 
-**nb tasknote** — with the [tw.nb-plugin](https://github.com/linuxcaffe/nb-plugins#twnb-plugin) (`nb tw`), a task's note is an nb note it links with `nb: tasknotes:<path>`, and whose frontmatter names the task back. That note *is* the archive: tw2nb makes no second per-task todo and transfers nothing, it only writes the journal entry (linking the note), and the [nbnotes](https://github.com/linuxcaffe/tw-nbnotes-hook) hook runs `nb tw status` so the note shows the task's status (`tw_status`, `tw_end`). Until 1.5.0 that hook was tw2nb's own `on-exit_tw2nb.py`; it's its own app now, so a station can keep task notes without tw2nb's archive and journal: `tw -I nbnotes`.
+**nb tasknote** — with the [tw.nb-plugin](https://github.com/linuxcaffe/nb-plugins#twnb-plugin) (`nb tw`), a task's note is an nb note it links with `nb: tasknotes:<path>`, and whose frontmatter names the task back. That note *is* the archive: tw2nb makes no second per-task todo and transfers nothing, it only writes the journal entry (linking the note), and the [nbnotes](https://github.com/linuxcaffe/tw-nbnotes-hook) hook runs `nb tw status` so the note shows the task's status (`tw_status`, `tw_end`). Until 1.5.0 that hook was tw2nb's own `on-exit_tw2nb.py`; it's its own app now, so a station can keep task notes without tw2nb's archive and journal: `tw -I nbnotes`. How task notes work across stations: [Task notes](https://github.com/linuxcaffe/tw-mobilize/blob/main/docs/task-notes.md).
 
 ## Installation
 
@@ -117,15 +117,8 @@ task 42 done                   # archives to nb; adds an 'nb: tasks:<file>' brea
 task log "Fixed the login bug" # already done — archives immediately on add
 ```
 
-**Asking for a task's note** (needs [nbnotes](https://github.com/linuxcaffe/tw-nbnotes-hook) and nb-plugins' `tw.nb-plugin`)
-
-```bash
-task 42 annotate nb:           # a note in tasknotes:, made at once; the annotation becomes its link
-task 42 annotate nb: acme:     # the same, in the acme notebook (mind the trailing colon)
-```
-
-Works from any client (tw-web, vit, the phone): nbnotes' on-exit hook runs `nb tw note`. An unknown
-notebook leaves the request and says why.
+**Asking for a task's note** is nbnotes' job: `task 42 annotate nb:` makes the note and links it.
+See [nbnotes](https://github.com/linuxcaffe/tw-nbnotes-hook) and [Task notes](https://github.com/linuxcaffe/tw-mobilize/blob/main/docs/task-notes.md).
 
 **Archiving deleted tasks** (requires `tw2nb.on_delete = yes`)
 
